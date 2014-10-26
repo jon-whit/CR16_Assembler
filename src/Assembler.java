@@ -32,7 +32,6 @@ public class Assembler
 		
 		// Create both optional and required command line arguments
 		Option help = new Option("help", "print this message");
-		Option bin = new Option("bin", "output binary machine instructions");
 		Option inputfile = OptionBuilder.withArgName("filepath")
 										.hasArg()
 										.isRequired()
@@ -47,7 +46,6 @@ public class Assembler
 		// Add those options that were created above
 		Options options = new Options();
 		options.addOption(help);
-		options.addOption(bin);
 		options.addOption(inputfile);
 		options.addOption(outputfile);
 		
@@ -69,26 +67,10 @@ public class Assembler
 			
 			// Create a new Assembler instance to assemble the given
 			// input file.
-			Assembler a = new Assembler(cmd.getOptionValue("filepath"));
+			Assembler a = new Assembler(cmd.getOptionValue("inputfile"));
+			a.generateBinary(new File(cmd.getOptionValue("outputfile")));
 			
-			if(cmd.hasOption("bin")) {
-				// Write out the binary machine instructions
-				try {
-					a.generateBinary(new File(cmd.getOptionValue("outputfile")));
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-				System.out.println("bin");
-			} else {
-				// Write out the hex machine instructions
-				try {
-					//a.generateHex(new File(cmd.getOptionValue("outputfile")));
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-			}
-			
-			System.out.println("Assembly complete. Please see the output file.");
+			System.out.println("Assembly complete. Please see the output file in your CWD.");
 		} catch (ParseException e) {
 			System.err.println( "Parsing failed.  Reason: " + e.getMessage() );
 		}
@@ -181,11 +163,11 @@ public class Assembler
             this.inputFile = new File(fileName);
 	}
         
-        /**
+   /**
 	 * Generates a file with binary content representative of the assembly instructions
 	 * provided in the input file.
-	 * instance. 
-	 * @param file - The output file.
+	 * 
+	 * @param file - The output file for which the binary instructions will be written to.
 	 */
 	public void generateBinary(File file) 
         {
@@ -195,71 +177,71 @@ public class Assembler
                 Scanner s = new Scanner(this.inputFile);
                 FileWriter fw = new FileWriter(file.getAbsoluteFile());
                 BufferedWriter w = new BufferedWriter(fw);
-                Pattern p = Pattern.compile("^[a-zA-Z]+[_*\\d*a-zA-Z*]*:");
+                Pattern p = Pattern.compile("^[a-z]+[_*\\d*a-z*]*:");
 
                 int lineNum = 0;
                 
                 while(s.hasNext()) 
                 {
-                    String line = s.nextLine().trim();
+                    String line = s.nextLine().trim().toLowerCase();
+                    //System.out.println(line);
                     Matcher m = p.matcher(line);
                     
+                    // If the current line isn't a label, then parse the instruction.
                     if(!m.matches()) 
-                    {
-                        System.out.println(line);
+                    {    
+                    	StringBuilder instruction = new StringBuilder();
                         
-                        StringBuilder instruction = new StringBuilder();
-                        String[] operands = line.split("\\s+");
+                    	// Split the instruction up based on white space. For example,
+                    	// add R1 R2 will be split into three strings [add, R1, R2]
+                    	String[] operands = line.split("\\s+");
                         
-                        if(operands[0].startsWith("s") && !operands[0].equals("stor"))
-                        {
-                            instruction.append(op.get("scond"));
-                            instruction.append(toBinary(operands[1], 4));
-                            instruction.append(func.get("scond"));
-                            instruction.append(cond.get(operands[0].substring(1)));
-                        }
-                        else if(operands[0].startsWith("j") && !operands[0].equals("jal"))
-                        {
-                            instruction.append(op.get("jcond"));
-                            instruction.append(cond.get(operands[0].substring(1)));
-                            instruction.append(func.get("jcond"));
-                            instruction.append(toBinary(operands[1], 4));
-                        }
-                        else if (operands[0].startsWith("b"))
-                        {
-                            instruction.append(op.get("bcond"));
-                            instruction.append(cond.get(operands[0].substring(1)));
-                            instruction.append(toBinary(labels.get(operands[1]) - lineNum, 8));
-                        }
-                        else if(operands[0].equals("stor") || operands[0].equals("load") || operands[0].equals("jal"))
-                        {
-                            instruction.append(op.get(operands[0]));
-                            instruction.append(toBinary(operands[1], 4));
-                            instruction.append(func.get(operands[0]));
-                            instruction.append(toBinary(operands[2], 4));
-                        }
-                        else
-                        {
-                            instruction.append(op.get(operands[0]));
-                            instruction.append(toBinary(operands[2], 4));
-                            
-                            if(func.containsKey(operands[0]))
-                            {
-                                instruction.append(func.get(operands[0]));
-                                instruction.append(toBinary(operands[1], 4));
-                            }
-                            else if(operands[0].equals("lshi") || operands[0].equals("ashui"))
-                            {
-                                instruction.append(operands[0].equals("lshi") ? "000" : "001");
-                                int imm = Integer.parseInt(operands[1]);
-                                instruction.append(imm < 0 ? "1" : "0");
-                                instruction.append(imm < 0 ? toBinary(-imm, 4) : toBinary(imm, 4));
-                            }
-                            else
-                            {
-                                 instruction.append(toBinary(operands[1], 8));
-                            }
-                        }
+   
+						if (operands[0].startsWith("s")
+								&& !operands[0].equals("store")
+								&& !(operands[0].equals("sub") || operands[0]
+										.equals("subi"))) {
+							instruction.append(op.get("scond"));
+							instruction.append(toBinary(operands[1], 4));
+							instruction.append(func.get("scond"));
+							instruction.append(cond.get(operands[0].substring(1)));
+						} else if (operands[0].startsWith("j") && !operands[0].equals("jal")) {
+							instruction.append(op.get("jcond"));
+							instruction.append(cond.get(operands[1].substring(1)));
+							instruction.append(func.get("jcond"));
+							instruction.append(toBinary(operands[1], 4));
+						} else if (operands[0].startsWith("b")) {
+							instruction.append(op.get("bcond"));
+							instruction.append(cond.get(operands[0].substring(1)));
+							instruction.append(toBinary(labels.get(operands[1])
+									- lineNum, 8));
+						} else if (operands[0].equals("stor")
+								|| operands[0].equals("load")
+								|| operands[0].equals("jal")) {
+							instruction.append(op.get(operands[0]));
+							instruction.append(toBinary(operands[1], 4));
+							instruction.append(func.get(operands[0]));
+							instruction.append(toBinary(operands[2], 4));
+						} else {
+							instruction.append(op.get(operands[0]));
+							instruction.append(toBinary(operands[2], 4));
+	
+							if (func.containsKey(operands[0])) {
+								instruction.append(func.get(operands[0]));
+								instruction.append(toBinary(operands[1], 4));
+							} else if (operands[0].equals("lshi")
+									|| operands[0].equals("ashui")) {
+								instruction
+										.append(operands[0].equals("lshi") ? "000"
+												: "001");
+								int imm = Integer.parseInt(operands[1]);
+								instruction.append(imm < 0 ? "1" : "0");
+								instruction.append(imm < 0 ? toBinary(-imm, 4)
+										: toBinary(imm, 4));
+							} else {
+								instruction.append(toBinary(operands[1], 8));
+							}
+						}
 
                         lineNum++;
                         instruction.append('\n');
@@ -318,14 +300,14 @@ public class Assembler
             return toBinary(Integer.parseInt(decimal), size);
         }
         
-         private static String toBinary(int decimal, int size)
+        private static String toBinary(int decimal, int size)
         {
             String binary = Integer.toBinaryString(decimal);
             
             while(binary.length() < size)
                 binary = "0" + binary;
             
-            binary = binary.substring(binary.length() - size, binary.length());
+            //binary = binary.substring(binary.length() - size, binary.length()); // pointless. binary.length() = size after the loop above. simply return binary.
             
             return binary;
         }
