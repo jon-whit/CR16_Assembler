@@ -15,7 +15,7 @@ To generate the machine instructions from a given assembly file, you can use the
 ```
 $ assemble -inputfile 'inputfileName' -outputfile 'outputFilename'
 ```
-This will output a .dat file called 'outputFilename' that contains the machine language instructions in hex format. By default, the output file will be created in the directory which the command was run.
+This will output a .dat file called 'outputFilename' that contains the machine language instructions in binary format. By default, the output file will be created in the directory which the command was run.
 
 TODO
 ----
