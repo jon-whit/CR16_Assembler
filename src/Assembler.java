@@ -19,7 +19,7 @@ import org.apache.commons.cli.ParseException;
 
 public class Assembler 
 {
-    	// Private member variables
+    // Private member variables
 	private File inputFile;
 	
 	/**
@@ -32,16 +32,16 @@ public class Assembler
 		
 		// Create both optional and required command line arguments
 		Option help = new Option("help", "print this message");
-		Option inputfile = OptionBuilder.withArgName("filepath")
-										.hasArg()
-										.isRequired()
-										.withDescription("use given assembly file as input")
-										.create("inputfile");
-		Option outputfile = OptionBuilder.withArgName("filepath")
-										 .hasArg()
-										 .isRequired()
-										 .withDescription("path to write the machine language file to")
-										 .create("outputfile");
+		OptionBuilder.withArgName("filepath");
+		OptionBuilder.hasArg();
+		OptionBuilder.isRequired();
+		OptionBuilder.withDescription("use given assembly file as input");
+		Option inputfile = OptionBuilder.create("inputfile");
+		OptionBuilder.withArgName("filepath");
+		OptionBuilder.hasArg();
+		OptionBuilder.isRequired();
+		OptionBuilder.withDescription("path to write the machine language file to");
+		Option outputfile = OptionBuilder.create("outputfile");
 		
 		// Add those options that were created above
 		Options options = new Options();
@@ -207,7 +207,7 @@ public class Assembler
 							instruction.append(cond.get(operands[0].substring(1)));
 						} else if (operands[0].startsWith("j") && !operands[0].equals("jal")) {
 							instruction.append(op.get("jcond"));
-							instruction.append(cond.get(operands[1].substring(1)));
+							instruction.append(cond.get(operands[0].substring(1)));
 							instruction.append(func.get("jcond"));
 							instruction.append(toBinary(operands[1], 4));
 						} else if (operands[0].startsWith("b")) {
@@ -307,7 +307,7 @@ public class Assembler
             while(binary.length() < size)
                 binary = "0" + binary;
             
-            //binary = binary.substring(binary.length() - size, binary.length()); // pointless. binary.length() = size after the loop above. simply return binary.
+            binary = binary.substring(binary.length() - size, binary.length());
             
             return binary;
         }
