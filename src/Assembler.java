@@ -198,7 +198,7 @@ public class Assembler
                         
    
 						if (operands[0].startsWith("s")
-								&& !operands[0].equals("store")
+								&& !operands[0].equals("stor")
 								&& !(operands[0].equals("sub") || operands[0]
 										.equals("subi"))) {
 							instruction.append(op.get("scond"));
