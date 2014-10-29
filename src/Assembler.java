@@ -92,8 +92,8 @@ public class Assembler
             
             map.put("add",   RTYPE_OP);
             map.put("addi",  "0101");
-            map.put("mult",  RTYPE_OP);
-            map.put("multi", "1110");
+            map.put("addu",   RTYPE_OP);
+            map.put("mul",  RTYPE_OP);
             map.put("sub",   RTYPE_OP);
             map.put("subi",  "1001");
             map.put("cmp",   RTYPE_OP);
@@ -214,7 +214,7 @@ public class Assembler
 							instruction.append(op.get("bcond"));
 							instruction.append(cond.get(operands[0].substring(1)));
 							instruction.append(toBinary(labels.get(operands[1])
-									- lineNum, 8));
+									- lineNum-1, 8));
 						} else if (operands[0].equals("stor")
 								|| operands[0].equals("load")
 								|| operands[0].equals("jal")) {
@@ -247,6 +247,11 @@ public class Assembler
                         instruction.append('\n');
                         w.write(instruction.toString());
                     }
+                }
+                
+                while(lineNum < 8192)
+                {
+                	w.write("0000000000000000/n");
                 }
 
                 s.close();
