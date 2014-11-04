@@ -249,12 +249,6 @@ public class Assembler
                     }
                 }
                 
-                while(lineNum < 8192)
-                {
-                	w.write("0000000000000000\n");
-                	lineNum++;
-                }
-
                 s.close();
                 w.close();
             }
