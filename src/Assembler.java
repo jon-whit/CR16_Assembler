@@ -213,7 +213,7 @@ public class Assembler
 						} else if (operands[0].startsWith("b")) {
 							instruction.append(op.get("bcond"));
 							instruction.append(cond.get(operands[0].substring(1)));
-							instruction.append(toBinary(labels.get(operands[1]), 8));
+							instruction.append(toBinary(labels.get(operands[1]) - lineNum, 8));
 						} else if (operands[0].equals("stor")
 								|| operands[0].equals("load")
 								|| operands[0].equals("jal")) {
