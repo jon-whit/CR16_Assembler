@@ -18,10 +18,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 public class Assembler 
-{
-    // Private member variables
-	private File inputFile;
-	
+{	
 	/**
 	 * Main entry point for our Assembler. This drives our CLI.
 	 * 
@@ -67,8 +64,11 @@ public class Assembler
 			
 			// Create a new Assembler instance to assemble the given
 			// input file.
-			Assembler a = new Assembler(cmd.getOptionValue("inputfile"));
-			a.generateBinary(new File(cmd.getOptionValue("outputfile")));
+			Assembler a = new Assembler();
+			File inputFile = new File(cmd.getOptionValue("inputfile"));
+			File outputFile = new File(cmd.getOptionValue("outputfile"));
+			a.generateBinary(inputFile, outputFile);
+			
 			
 			System.out.println("Assembly complete. Please see the output file in your CWD.");
 		} catch (ParseException e) {
@@ -158,117 +158,144 @@ public class Assembler
             func = funcMap;
 	}
         
-	public Assembler(String fileName) 
-        {
-            this.inputFile = new File(fileName);
-	}
-        
    /**
 	 * Generates a file with binary content representative of the assembly instructions
 	 * provided in the input file.
 	 * 
 	 * @param file - The output file for which the binary instructions will be written to.
 	 */
-	public void generateBinary(File file) 
+	public void generateBinary(File inputFile, File outputFile) 
+    {
+        try
         {
-            try
-            {
-                HashMap<String, Integer> labels = genLabelMap(this.inputFile);
-                Scanner s = new Scanner(this.inputFile);
-                FileWriter fw = new FileWriter(file.getAbsoluteFile());
-                BufferedWriter w = new BufferedWriter(fw);
-                Pattern p = Pattern.compile("^[a-z]+[_*\\d*a-z*]*:");
+            HashMap<String, Integer> labels = genLabelMap(inputFile);
+            File expandedFile = replacePseudoInst(inputFile);
+            Scanner s = new Scanner(expandedFile);
+            FileWriter fw = new FileWriter(outputFile.getAbsoluteFile());
+            BufferedWriter w = new BufferedWriter(fw);
+            
+            // Generate a pattern to match any label
+            Pattern p = Pattern.compile("^[a-z]+[_*\\d*a-z*]*:");
 
-                int lineNum = 0;
+            int lineNum = 0;
+            
+            while(s.hasNext()) 
+            {
+            	// Grab the next line from the assembly file. Convert it to lower case.
+            	// Replace all occurrences of r with an empty string.
+                String line = s.nextLine().trim().toLowerCase().replace("r", "");
                 
-                while(s.hasNext()) 
-                {
-                    String line = s.nextLine().trim().toLowerCase();
-                    Matcher m = p.matcher(line);
+                // Ignore blank lines
+                if (line.length() == 0)
+                	continue;
+                
+                Matcher m = p.matcher(line);
+                
+                // If the current line isn't a label, then parse the instruction.
+                if(!m.matches()) 
+                {    
+                	StringBuilder instruction = new StringBuilder();
                     
-                    // If the current line isn't a label, then parse the instruction.
-                    if(!m.matches()) 
-                    {    
-                    	StringBuilder instruction = new StringBuilder();
-                        
-                    	// Split the instruction up based on white space. For example,
-                    	// add rsrc rdest will be split into three strings [add, rsrc, rdest]
-                    	String[] operands = line.split("\\s+");
-                        
-                    	String inst = operands[0];
-                    	
-						if (inst.startsWith("s")
-								&& !inst.equals("stor")
-								&& !(inst.equals("sub") || inst.equals("subi"))) {
-							// Instruction must be "scond"
-							instruction.append(op.get("scond"));
-							String dest = operands[1];
-							instruction.append(toBinary(dest, 4));
-							instruction.append(func.get("scond"));
-							String condition = operands[0].substring(1);
-							instruction.append(cond.get(condition));
-						} else if (inst.startsWith("j") && !inst.equals("jal")) {
-							// Instruction must be "jcond"
-							instruction.append(op.get("jcond"));
-							String condition = operands[0].substring(1);
-							instruction.append(cond.get(condition));
-							instruction.append(func.get("jcond"));
-							String dest = operands[1];
-							instruction.append(toBinary(dest, 4));
-						} else if (inst.startsWith("b")) {
-							// Instruction must be "bcond"
-							instruction.append(op.get("bcond"));
-							String condition = operands[0].substring(1);
-							instruction.append(cond.get(condition));
-							String dest = operands[1];
-							instruction.append(toBinary(labels.get(dest) - lineNum, 8));
-						} else if (inst.equals("stor")
-								|| inst.equals("load")
-								|| inst.equals("jal")) {
-							// Instruction is a "stor", "load", or "jal"
-							instruction.append(op.get(inst));
+                	// Split the instruction up based on white space. For example,
+                	// add rsrc rdest will be split into three strings [add, rsrc, rdest]
+                	String[] operands = line.split("\\s+");
+                    
+                	String inst = operands[0];
+                	
+					if (inst.startsWith("s")
+							&& !inst.equals("stor")
+							&& !(inst.equals("sub") || inst.equals("subi"))) {
+						// Instruction must be "scond"
+						instruction.append(op.get("scond"));
+						String dest = operands[1];
+						instruction.append(toBinary(dest, 4));
+						instruction.append(func.get("scond"));
+						String condition = operands[0].substring(1);
+						instruction.append(cond.get(condition));
+					} else if (inst.startsWith("j") && !inst.equals("jal")) {
+						// Instruction must be "jcond"
+						instruction.append(op.get("jcond"));
+						String condition = operands[0].substring(1);
+						instruction.append(cond.get(condition));
+						instruction.append(func.get("jcond"));
+						String dest = operands[1];
+						instruction.append(toBinary(dest, 4));
+					} else if (inst.startsWith("b")) {
+						// Instruction must be "bcond"
+						instruction.append(op.get("bcond"));
+						String condition = operands[0].substring(1);
+						instruction.append(cond.get(condition));
+						String dest = operands[1];
+						instruction.append(toBinary(labels.get(dest) - lineNum, 8));
+					} else if (inst.equals("stor")
+							|| inst.equals("load")
+							|| inst.equals("jal")) {
+						// Instruction is a "stor", "load", or "jal"
+						instruction.append(op.get(inst));
+						String rsrc = operands[1];
+						instruction.append(toBinary(rsrc, 4));
+						instruction.append(func.get(inst));
+						String memdest = operands[2];
+						instruction.append(toBinary(memdest, 4));
+					} else {
+						instruction.append(op.get(inst));
+						String rdest = operands[2];
+						instruction.append(toBinary(rdest, 4));
+
+						if (func.containsKey(inst)) {
+							instruction.append(func.get(inst));
 							String rsrc = operands[1];
 							instruction.append(toBinary(rsrc, 4));
-							instruction.append(func.get(inst));
-							String memdest = operands[2];
-							instruction.append(toBinary(memdest, 4));
+						} else if (inst.equals("lshi")
+								|| inst.equals("ashui")) {
+							instruction.append(inst.equals("lshi") ? "000"
+											: "001");
+							int imm = Integer.parseInt(operands[1]);
+							instruction.append(imm < 0 ? "1" : "0");
+							instruction.append(imm < 0 ? toBinary(-imm, 4)
+									: toBinary(imm, 4));
 						} else {
-							instruction.append(op.get(inst));
-							String rdest = operands[2];
-							instruction.append(toBinary(rdest, 4));
-	
-							if (func.containsKey(inst)) {
-								instruction.append(func.get(inst));
-								String rsrc = operands[1];
-								instruction.append(toBinary(rsrc, 4));
-							} else if (inst.equals("lshi")
-									|| inst.equals("ashui")) {
-								instruction.append(inst.equals("lshi") ? "000"
-												: "001");
-								int imm = Integer.parseInt(operands[1]);
-								instruction.append(imm < 0 ? "1" : "0");
-								instruction.append(imm < 0 ? toBinary(-imm, 4)
-										: toBinary(imm, 4));
+							String imm = operands[1];
+							
+							if (isLabel(imm)) {
+								int i = labels.get(imm);
+								instruction.append(toBinary(i, 8));
 							} else {
-								instruction.append(toBinary(operands[1], 8));
+								instruction.append(toBinary(imm, 8));
 							}
 						}
+					}
 
-                        lineNum++;
-                        instruction.append('\n');
-                        w.write(instruction.toString());
-                    }
+                    lineNum++;
+                    instruction.append('\n');
+                    w.write(instruction.toString());
                 }
-                
-                s.close();
-                w.close();
             }
-            catch(IOException e)
-            {
-                System.err.println(e.getMessage());
-            }
+            
+            s.close();
+            w.close();
+        }
+        catch(IOException e)
+        {
+            System.err.println(e.getMessage());
+        }
 	}
 	
+	/**
+	 * Determines if the specified immediate is a label or a decimal value.
+	 * 
+	 * @param imm
+	 * @return True if the immediate is a label. False otherwise.
+	 */
+	private boolean isLabel(String imm) {
+		try {
+			Integer.parseInt(imm);
+			return false;
+		} catch (NumberFormatException e) {
+			return true;
+		}
+	}
+
 	/**
 	 * Generates a HashMap of labels and the line number which that label occurred. The
 	 * labels are keys, and the line numbers are the values.
@@ -276,51 +303,151 @@ public class Assembler
 	 * @return
 	 */
 	private HashMap<String, Integer> genLabelMap(File f) 
+    {
+        HashMap<String, Integer> labels = new HashMap<String, Integer>();
+        try
         {
-            HashMap<String, Integer> labels = new HashMap<String, Integer>();
-            try
-            {
-                Scanner s = new Scanner(f);
-                String pattern = "^[a-zA-Z]+[_*\\d*a-zA-Z*]*:";
-                int lineNum = 0;
+            Scanner s = new Scanner(f);
+            String pattern = "^[a-zA-Z]+[_*\\d*a-zA-Z*]*:";
+            int lineNum = 0;
 
-                while(s.hasNext()) 
+            while(s.hasNext()) 
+            {
+                String line = s.nextLine().trim();
+                Pattern p = Pattern.compile(pattern);
+                Matcher m = p.matcher(line);
+
+                if(m.matches()) 
+                    labels.put(line.substring(0, line.length() - 1), lineNum);
+                else
                 {
-                    String line = s.nextLine().trim();
-                    Pattern p = Pattern.compile(pattern);
-                    Matcher m = p.matcher(line);
-
-                    if(m.matches()) 
-                        labels.put(line.substring(0, line.length() - 1), lineNum);
-                    else
-                        lineNum++;
+                	if(isPseudoInst(line)) 
+                	{
+                		int numInst = expandPseudoInst(line).length;
+                		lineNum += numInst - 1;
+                	} else {
+                		lineNum++;
+                	}
                 }
+            }
 
-                s.close();
-            }
-            catch(FileNotFoundException e)
-            {
-                System.err.println(e.getMessage());
-            }
-            
-            return labels;
+            s.close();
+        }
+        catch(FileNotFoundException e)
+        {
+            System.err.println(e.getMessage());
+        }
+        
+        return labels;
 	}
         
-        private static String toBinary(String decimal, int size)
-        {
-            return toBinary(Integer.parseInt(decimal), size);
-        }
+	/**
+	 * Generates an array of all the baseline instructions the supplied pseudo instruction
+	 * should execute.
+	 * 
+	 * @param line - The line containing the pseudo instruction
+	 * @return An array of Strings of baseline instructions.
+	 */
+	private String[] expandPseudoInst(String line) {
+		
+		String inst = line.toLowerCase();
+		if(inst.startsWith("jal")) 
+		{
+			String label = inst.split("\\s+")[1];
+			String inst1 = "lui " + label + " R14";
+			String inst2 = "addi " + label + " R14";
+			String inst3 = "jal R15 R14";
+			return new String[] {inst1, inst2, inst3};
+		} 
+		
+		// The JAL pseudo instruction is the only instruction we are implementing. If we 
+		// add more, then we will add more "if" clauses later.
+		return null;
+	}
+	
+	/**
+	 * 
+	 * @param inputFile
+	 * @return
+	 */
+	private File replacePseudoInst(File inputFile)
+	{
+		Scanner in = null;
+		FileWriter fw = null;
+		BufferedWriter w = null;
+        try {
+			in = new Scanner(inputFile);
+			File newFile = new File(inputFile.getAbsoluteFile() + ".exanded");
+			fw = new FileWriter(newFile);
+			w = new BufferedWriter(fw);
+			
+			while(in.hasNext()) {
+				StringBuilder instruction = new StringBuilder();
+				
+				String line = in.nextLine().trim().toLowerCase();
+				
+				// If the given instruction is a pseudo instruction. Expand it,
+				// and write the expanded baseline instructions.
+				if(isPseudoInst(line)) {
+					String[] instructions = expandPseudoInst(line);
+					
+					for (String s : instructions) {
+						instruction.append(s);
+						instruction.append("\n");
+					}
+				} else {
+					// Otherwise, just re-write the instruction.
+					instruction.append(line);
+				}
+				
+				// Write the contents to the file.
+				instruction.append("\n");
+				w.write(instruction.toString());
+			}
+			
+			in.close();
+			w.close();
+			return newFile;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
         
-        private static String toBinary(int decimal, int size)
-        {
-            String binary = Integer.toBinaryString(decimal);
-            
-            while(binary.length() < size)
-                binary = "0" + binary;
-            
-            binary = binary.substring(binary.length() - size, binary.length());
-            
-            return binary;
+        return null;
+	}
+
+	/**
+	 * Determines if the given line contains a pseudo instruction as per our ISA.
+	 * 
+	 * @param line - The line containing the instruction
+	 * @return True if the line contains a pseudo instruction. False otherwise.
+	 */
+	private boolean isPseudoInst(String line) {
+        String pattern = "jal\\s[a-z]+[_*\\d*a-z*]*";
+        Pattern p = Pattern.compile(pattern);
+        Matcher m = p.matcher(line);
+        
+        if(m.matches()) {
+        	return true;
+        } else {
+        	return false;
         }
+	}
+
+	private static String toBinary(String decimal, int size)
+	{
+	    return toBinary(Integer.parseInt(decimal), size);
+	}
+	
+	private static String toBinary(int decimal, int size)
+	{
+	    String binary = Integer.toBinaryString(decimal);
+	    
+	    while(binary.length() < size)
+	        binary = "0" + binary;
+	    
+	    binary = binary.substring(binary.length() - size, binary.length());
+	    
+	    return binary;
+	}
 }
 
