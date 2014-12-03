@@ -162,7 +162,8 @@ public class Assembler
 	 * Generates a file with binary content representative of the assembly instructions
 	 * provided in the input file.
 	 * 
-	 * @param file - The output file for which the binary instructions will be written to.
+	 * @param inputFile - The input file containing the assembly instructions.
+	 * @param outputFile - The output file for which the binary instructions will be written to.
 	 */
 	public void generateBinary(File inputFile, File outputFile) 
     {
@@ -185,8 +186,8 @@ public class Assembler
             	// Replace all occurrences of r with an empty string.
                 String line = s.nextLine().trim().toLowerCase().replace("r", "");
                 
-                // Ignore blank lines
-                if (line.length() == 0)
+                // Ignore blank lines and comments
+                if (line.startsWith("//") || line.length() == 0)
                 	continue;
                 
                 Matcher m = p.matcher(line);
@@ -314,6 +315,11 @@ public class Assembler
             while(s.hasNext()) 
             {
                 String line = s.nextLine().trim();
+                
+                // Ignore comments and blank lines
+                if(line.startsWith("//") || line.length() == 0)
+                	continue;
+                
                 Pattern p = Pattern.compile(pattern);
                 Matcher m = p.matcher(line);
 
@@ -324,7 +330,7 @@ public class Assembler
                 	if(isPseudoInst(line)) 
                 	{
                 		int numInst = expandPseudoInst(line).length;
-                		lineNum += numInst - 1;
+                		lineNum += numInst;
                 	} else {
                 		lineNum++;
                 	}
@@ -366,9 +372,11 @@ public class Assembler
 	}
 	
 	/**
+	 * Replaces all pseudo instructions with their baseline instructions and returns
+	 * a new file with these changes.
 	 * 
-	 * @param inputFile
-	 * @return
+	 * @param inputFile - The file to be processed
+	 * @return A new file with the expanded pseudo instructions
 	 */
 	private File replacePseudoInst(File inputFile)
 	{
@@ -377,7 +385,7 @@ public class Assembler
 		BufferedWriter w = null;
         try {
 			in = new Scanner(inputFile);
-			File newFile = new File(inputFile.getAbsoluteFile() + ".exanded");
+			File newFile = new File(inputFile.getAbsoluteFile() + ".expanded");
 			fw = new FileWriter(newFile);
 			w = new BufferedWriter(fw);
 			
@@ -422,7 +430,8 @@ public class Assembler
 	 * @return True if the line contains a pseudo instruction. False otherwise.
 	 */
 	private boolean isPseudoInst(String line) {
-        String pattern = "jal\\s[a-z]+[_*\\d*a-z*]*";
+       
+		String pattern = "jal\\s[a-z]+[_*\\d*a-z*]*";
         Pattern p = Pattern.compile(pattern);
         Matcher m = p.matcher(line);
         
@@ -433,12 +442,12 @@ public class Assembler
         }
 	}
 
-	private static String toBinary(String decimal, int size)
+	private String toBinary(String decimal, int size)
 	{
 	    return toBinary(Integer.parseInt(decimal), size);
 	}
 	
-	private static String toBinary(int decimal, int size)
+	private String toBinary(int decimal, int size)
 	{
 	    String binary = Integer.toBinaryString(decimal);
 	    
