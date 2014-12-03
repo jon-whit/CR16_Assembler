@@ -184,7 +184,6 @@ public class Assembler
                 while(s.hasNext()) 
                 {
                     String line = s.nextLine().trim().toLowerCase();
-                    //System.out.println(line);
                     Matcher m = p.matcher(line);
                     
                     // If the current line isn't a label, then parse the instruction.
@@ -193,45 +192,58 @@ public class Assembler
                     	StringBuilder instruction = new StringBuilder();
                         
                     	// Split the instruction up based on white space. For example,
-                    	// add R1 R2 will be split into three strings [add, R1, R2]
+                    	// add rsrc rdest will be split into three strings [add, rsrc, rdest]
                     	String[] operands = line.split("\\s+");
                         
-   
-						if (operands[0].startsWith("s")
-								&& !operands[0].equals("stor")
-								&& !(operands[0].equals("sub") || operands[0]
-										.equals("subi"))) {
+                    	String inst = operands[0];
+                    	
+						if (inst.startsWith("s")
+								&& !inst.equals("stor")
+								&& !(inst.equals("sub") || inst.equals("subi"))) {
+							// Instruction must be "scond"
 							instruction.append(op.get("scond"));
-							instruction.append(toBinary(operands[1], 4));
+							String dest = operands[1];
+							instruction.append(toBinary(dest, 4));
 							instruction.append(func.get("scond"));
-							instruction.append(cond.get(operands[0].substring(1)));
-						} else if (operands[0].startsWith("j") && !operands[0].equals("jal")) {
+							String condition = operands[0].substring(1);
+							instruction.append(cond.get(condition));
+						} else if (inst.startsWith("j") && !inst.equals("jal")) {
+							// Instruction must be "jcond"
 							instruction.append(op.get("jcond"));
-							instruction.append(cond.get(operands[0].substring(1)));
+							String condition = operands[0].substring(1);
+							instruction.append(cond.get(condition));
 							instruction.append(func.get("jcond"));
-							instruction.append(toBinary(operands[1], 4));
-						} else if (operands[0].startsWith("b")) {
+							String dest = operands[1];
+							instruction.append(toBinary(dest, 4));
+						} else if (inst.startsWith("b")) {
+							// Instruction must be "bcond"
 							instruction.append(op.get("bcond"));
-							instruction.append(cond.get(operands[0].substring(1)));
-							instruction.append(toBinary(labels.get(operands[1]) - lineNum, 8));
-						} else if (operands[0].equals("stor")
-								|| operands[0].equals("load")
-								|| operands[0].equals("jal")) {
-							instruction.append(op.get(operands[0]));
-							instruction.append(toBinary(operands[1], 4));
-							instruction.append(func.get(operands[0]));
-							instruction.append(toBinary(operands[2], 4));
+							String condition = operands[0].substring(1);
+							instruction.append(cond.get(condition));
+							String dest = operands[1];
+							instruction.append(toBinary(labels.get(dest) - lineNum, 8));
+						} else if (inst.equals("stor")
+								|| inst.equals("load")
+								|| inst.equals("jal")) {
+							// Instruction is a "stor", "load", or "jal"
+							instruction.append(op.get(inst));
+							String rsrc = operands[1];
+							instruction.append(toBinary(rsrc, 4));
+							instruction.append(func.get(inst));
+							String memdest = operands[2];
+							instruction.append(toBinary(memdest, 4));
 						} else {
-							instruction.append(op.get(operands[0]));
-							instruction.append(toBinary(operands[2], 4));
+							instruction.append(op.get(inst));
+							String rdest = operands[2];
+							instruction.append(toBinary(rdest, 4));
 	
-							if (func.containsKey(operands[0])) {
-								instruction.append(func.get(operands[0]));
-								instruction.append(toBinary(operands[1], 4));
-							} else if (operands[0].equals("lshi")
-									|| operands[0].equals("ashui")) {
-								instruction
-										.append(operands[0].equals("lshi") ? "000"
+							if (func.containsKey(inst)) {
+								instruction.append(func.get(inst));
+								String rsrc = operands[1];
+								instruction.append(toBinary(rsrc, 4));
+							} else if (inst.equals("lshi")
+									|| inst.equals("ashui")) {
+								instruction.append(inst.equals("lshi") ? "000"
 												: "001");
 								int imm = Integer.parseInt(operands[1]);
 								instruction.append(imm < 0 ? "1" : "0");
