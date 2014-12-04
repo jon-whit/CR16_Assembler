@@ -176,7 +176,7 @@ public class Assembler
             BufferedWriter w = new BufferedWriter(fw);
             
             // Generate a pattern to match any label
-            Pattern p = Pattern.compile("^[a-z]+[_*\\d*a-z*]*:");
+            Pattern p = Pattern.compile("^[a-z]+['*_*\\d*a-z*]*:");
 
             int lineNum = 0;
             
@@ -184,8 +184,9 @@ public class Assembler
             {
             	// Grab the next line from the assembly file. Convert it to lower case.
             	// Replace all occurrences of r with an empty string.
-                String line = s.nextLine().trim().toLowerCase().replace("r", "");
-                
+                //String line = s.nextLine().trim().toLowerCase().replace("r", "");
+            	String line = s.nextLine().trim().toLowerCase();
+            	
                 // Ignore blank lines and comments
                 if (line.startsWith("//") || line.length() == 0)
                 	continue;
@@ -283,7 +284,7 @@ public class Assembler
             s.close();
             w.close();
         }
-        catch(IOException e)
+        catch(Exception e)
         {
             System.err.println(e.getMessage());
         }
@@ -316,12 +317,12 @@ public class Assembler
         try
         {
             Scanner s = new Scanner(f);
-            String pattern = "^[a-zA-Z]+[_*\\d*a-zA-Z*]*:";
+            String pattern = "^\\s*[a-zA-Z]+['*_*\\d*a-zA-Z*]*:";
             int lineNum = 0;
 
             while(s.hasNext()) 
             {
-                String line = s.nextLine().trim();
+                String line = s.nextLine().trim().toLowerCase();
                 
                 // Ignore comments and blank lines
                 if(line.startsWith("//") || line.length() == 0)
