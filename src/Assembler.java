@@ -260,7 +260,14 @@ public class Assembler
 							
 							if (isLabel(imm)) {
 								int i = labels.get(imm);
-								instruction.append(toBinary(i, 8));
+								
+								if (inst.equals("lui"))
+								{
+									instruction.append(toBinary(i >> 8, 8));
+								} else {
+									instruction.append(toBinary(i & 255, 8));
+								}
+								
 							} else {
 								instruction.append(toBinary(imm, 8));
 							}
